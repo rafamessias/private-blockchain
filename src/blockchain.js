@@ -75,8 +75,10 @@ class Blockchain {
         //assign timestamp
         block.time = new Date().getTime().toString().slice(0, -3);
 
+        const { hash, ...blockToBeHashed } = block;
+
         //assign hash
-        block.hash = SHA256(JSON.stringify(block)).toString();
+        block.hash = SHA256(JSON.stringify(blockToBeHashed)).toString();
 
         self.chain.push(block);
         self.height++;
@@ -97,7 +99,14 @@ class Blockchain {
    * @param {*} address
    */
   requestMessageOwnershipVerification(address) {
-    return new Promise((resolve) => {});
+    return new Promise((resolve) => {
+      resolve(
+        `${address}:${new Date()
+          .getTime()
+          .toString()
+          .slice(0, -3)}:starRegistry`
+      );
+    });
   }
 
   /**
@@ -119,7 +128,34 @@ class Blockchain {
    */
   submitStar(address, message, signature, star) {
     let self = this;
-    return new Promise(async (resolve, reject) => {});
+    return new Promise(async (resolve, reject) => {
+      try {
+        //time message requested
+        const timeMSG = parseInt(message.split(":")[1]);
+
+        //get current time
+        const currentTime = parseInt(
+          new Date().getTime().toString().slice(0, -3)
+        );
+
+        //if elapsed time is more than 5 minutes, return error
+        const elapsedTime = currentTime - timeMSG;
+        if (elapsedTime > 500)
+          reject({ error: "More than 5 minutes elapsed time" });
+
+        //verify bitcoin message
+        const validMSG = bitcoinMessage.verify(message, address, signature);
+
+        if (validMSG) {
+          const newBlock = new BlockClass.Block(star);
+          newBlock.owner = address;
+          self._addBlock(newBlock);
+          resolve(newBlock);
+        } else reject({ error: "Block not valid." });
+      } catch (e) {
+        reject({ error: e.message });
+      }
+    });
   }
 
   /**
@@ -130,7 +166,18 @@ class Blockchain {
    */
   getBlockByHash(hash) {
     let self = this;
-    return new Promise((resolve, reject) => {});
+    return new Promise((resolve, reject) => {
+      try {
+        const blockFound = self.chain.filter(
+          (chainBlock) => chainBlock.hash === hash
+        );
+
+        if (blockFound.length > 0) resolve(blockFound);
+        else reject({ error: "Block not found" });
+      } catch (e) {
+        reject({ error: e.message });
+      }
+    });
   }
 
   /**
@@ -159,7 +206,27 @@ class Blockchain {
   getStarsByWalletAddress(address) {
     let self = this;
     let stars = [];
-    return new Promise((resolve, reject) => {});
+    return new Promise(async (resolve, reject) => {
+      try {
+        //filter all the block's owner
+        const blocksFound = self.chain.filter(
+          (chainBlock) => chainBlock.owner === address
+        );
+
+        //get decoded data from the blocks
+        const starsPromises = blocksFound.map(async (block) => {
+          return await block.getBData();
+        });
+
+        //wait the promises
+        stars = await Promise.all(starsPromises);
+
+        if (blocksFound.length > 0) resolve({ owner: address, stars });
+        else reject({ error: "Blocks not found" });
+      } catch (e) {
+        reject({ error: e.message });
+      }
+    });
   }
 
   /**
@@ -171,7 +238,37 @@ class Blockchain {
   validateChain() {
     let self = this;
     let errorLog = [];
-    return new Promise(async (resolve, reject) => {});
+
+    return new Promise(async (resolve, reject) => {
+      try {
+        for (let count = 0; count < self.chain.length; count++) {
+          const block = self.chain[count];
+          //validate the block hash
+          const blockValid = await block.validate();
+
+          //validate the chain, based on previous block hash
+          let previousBlockHashOK = true;
+          if (block.height > 0)
+            previousBlockHashOK =
+              block.previousBlockHash === self.chain[block.height - 1].hash;
+
+          //if block is invalid OR chain is invalid, add to errorLog Array
+          if (!blockValid || !previousBlockHashOK)
+            errorLog.push({
+              block_hash: block.hash,
+              valid: blockValid,
+              previousBlockHashOK: previousBlockHashOK,
+            });
+        }
+
+        //retrun the errors
+        if (errorLog.length > 0) resolve(errorLog);
+        else resolve(null);
+      } catch (e) {
+        console.log(`Error ${e}`);
+        reject({ error: e });
+      }
+    });
   }
 }
 
