@@ -4,7 +4,7 @@
   "description": "This project creates a Blockchain application to store data into the blocks",
   "main": "index.js",
   "scripts": {
-    "dev": "node app.js",
+    "dev": "nodemon app.js",
     "test": "jest",
     "test-watch": "jest --watch",
     "test-watch-all": "jest --watchAll"
@@ -21,6 +21,7 @@
     "morgan": "^1.9.1"
   },
   "devDependencies": {
-    "jest": "^28.1.2"
+    "jest": "^28.1.2",
+    "nodemon": "^2.0.18"
   }
 }
