@@ -75,8 +75,10 @@ class Blockchain {
         //assign timestamp
         block.time = new Date().getTime().toString().slice(0, -3);
 
+        const { hash, ...blockToBeHashed } = block;
+
         //assign hash
-        block.hash = SHA256(JSON.stringify(block)).toString();
+        block.hash = SHA256(JSON.stringify(blockToBeHashed)).toString();
 
         self.chain.push(block);
         self.height++;
@@ -136,10 +138,10 @@ class Blockchain {
           new Date().getTime().toString().slice(0, -3)
         );
 
-        //if elapsed time
-        //const elapsedTime = currentTime - timeMSG;
-        //if (elapsedTime > 500)
-        //  reject({ error: "More than 5 minutes elapsed time" });
+        //if elapsed time is more than 5 minutes, return error
+        const elapsedTime = currentTime - timeMSG;
+        if (elapsedTime > 500)
+          reject({ error: "More than 5 minutes elapsed time" });
 
         //verify bitcoin message
         const validMSG = bitcoinMessage.verify(message, address, signature);
@@ -241,16 +243,16 @@ class Blockchain {
       try {
         for (let count = 0; count < self.chain.length; count++) {
           const block = self.chain[count];
-          console.log(await block.validate());
+          //validate the block hash
           const blockValid = await block.validate();
 
+          //validate the chain, based on previous block hash
           let previousBlockHashOK = true;
           if (block.height > 0)
             previousBlockHashOK =
               block.previousBlockHash === self.chain[block.height - 1].hash;
 
-          console.log(blockValid, previousBlockHashOK);
-
+          //if block is invalid OR chain is invalid, add to errorLog Array
           if (!blockValid || !previousBlockHashOK)
             errorLog.push({
               block_hash: block.hash,
@@ -259,14 +261,11 @@ class Blockchain {
             });
         }
 
-        //console.log(errorLog);
-        //errorLog = await Promise.all(errorLog);
-        //console.log(errorLog);
-
+        //retrun the errors
         if (errorLog.length > 0) resolve(errorLog);
         else resolve(null);
       } catch (e) {
-        console.log(e);
+        console.log(`Error ${e}`);
         reject({ error: e });
       }
     });

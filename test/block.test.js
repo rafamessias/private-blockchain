@@ -18,7 +18,8 @@ test("validate the block's hash sent - valid", async () => {
 
 test("validate the block's hash sent - invalid", async () => {
   const newBlock = new blockClass.Block(blockBody);
-  return expect(newBlock.validate()).rejects.toBe(false);
+  const response = await newBlock.validate();
+  expect(response).toBe(false);
 });
 
 test("get block body data decoded - error Genesis block", async () => {
