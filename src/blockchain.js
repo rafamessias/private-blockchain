@@ -68,7 +68,7 @@ class Blockchain {
         const newHeight = self.height + 1;
         block.height = newHeight;
 
-        //get previousBlockHash
+        //getting previousBlockHash
         if (self.height !== -1)
           block.previousBlockHash = self.chain[self.height].hash;
 
@@ -80,6 +80,11 @@ class Blockchain {
         //assign hash
         block.hash = SHA256(JSON.stringify(blockToBeHashed)).toString();
 
+        //validating the chain
+        const chainIsInvalid = await self.validateChain();
+        if (chainIsInvalid) reject({ error: "Invalid chain" });
+
+        //adding block to the chain
         self.chain.push(block);
         self.height++;
 
@@ -168,11 +173,11 @@ class Blockchain {
     let self = this;
     return new Promise((resolve, reject) => {
       try {
-        const blockFound = self.chain.filter(
+        const blockFound = self.chain.find(
           (chainBlock) => chainBlock.hash === hash
         );
 
-        if (blockFound.length > 0) resolve(blockFound);
+        if (blockFound) resolve(blockFound);
         else reject({ error: "Block not found" });
       } catch (e) {
         reject({ error: e.message });
@@ -188,7 +193,7 @@ class Blockchain {
   getBlockByHeight(height) {
     let self = this;
     return new Promise((resolve, reject) => {
-      let block = self.chain.filter((p) => p.height === height)[0];
+      let block = self.chain.find((p) => p.height === height);
       if (block) {
         resolve(block);
       } else {
